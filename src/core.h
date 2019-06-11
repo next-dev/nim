@@ -12,7 +12,6 @@
 #include <functional>
 #include <map>
 #include <optional>
-#include <stb_image.h>
 #include <string>
 #include <vector>
 

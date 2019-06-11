@@ -17,7 +17,6 @@
 //
 //      image <filename.ext>                Generate a .nim file.  Supports many image formats.
 //          --pal <filename.nip/pal>            Define the palette to use in conversion (otherwise uses default palette)
-//          --transparent <index>               Define the transparency colour (alpha < 1 will use this).
 //
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -57,6 +56,9 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 namespace fs = std::filesystem;
 
@@ -180,6 +182,8 @@ public:
 
                 m_colours.push_back(Colour(r, g, b));
             }
+
+            f.read((char *)&m_transparentColour, 1);
         }
         else
         {
@@ -229,9 +233,11 @@ public:
         m_colours = move(colours);
     }
 
-    int numColours() const { return int(m_colours.size()); }
+    func numColours() const -> int{ return int(m_colours.size()); }
 
-    const Colour& operator[] (int i) const { return m_colours[i]; }
+    func operator[] (int i) const -> const Colour& { return m_colours[i]; }
+
+    func getTransColour() const -> u8 { return m_transparentColour; }
 
     func write(ofstream& f, bool extended) const -> bool
     {
@@ -374,8 +380,104 @@ func palette_handler(const CmdLine& cmdLine) -> int
 // Image command handler
 //----------------------------------------------------------------------------------------------------------------------
 
+func process_image(const Palette& p, const CmdLine& cmdLine) -> int
+{
+    int w, h, bpp;
+    fs::path path = cmdLine.param(0);
+
+    u32* img = (u32 *)stbi_load(path.string().c_str(), &w, &h, &bpp, 4);
+    vector<u8> dst;
+
+    // Convert image
+    u32* s = img;
+    for (int row = 0; row < h; ++row)
+    {
+        for (int col = 0; col < w; ++col)
+        {
+            u8 a = (*s & 0xff000000) >> 24;
+            u8 b = (*s & 0x00ff0000) >> 16;
+            u8 g = (*s & 0x0000ff00) >> 8;
+            u8 r = (*s & 0x000000ff);
+
+            u8 x;   // Final index value
+
+            if (a != 255)
+            {
+                x = p.getTransColour();
+            }
+            else
+            {
+                float p0[3] = { float(r), float(g), float(b) };
+                float d = 256 * 256 * 256;
+
+                for (int i = 0; i < p.numColours(); ++i)
+                {
+                    if (i == p.getTransColour()) continue;
+
+                    float p1[3] = { float(p[i].m_red), float(p[i].m_green), float(p[i].m_blue) };
+
+                    float dx = p1[0] - p0[0];
+                    float dy = p1[1] - p0[1];
+                    float dz = p1[2] - p0[2];
+                    float dist = (dx*dx + dy * dy + dz * dz);
+
+                    if (dist < d)
+                    {
+                        d = dist;
+                        x = i;
+                    }
+                }
+            }
+
+            dst.push_back(x);
+            ++s;
+        }
+    }
+
+    assert(dst.size() == w * h);
+
+    return 0;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
 func image_handler(const CmdLine& cmdLine) -> int
 {
+    if (cmdLine.numParams() != 1)
+    {
+        cerr << "ERROR: Invalid parameters." << endl;
+        cerr << "Syntax: " << endl
+            << "    nim image <options> <filename.ext>  - Generate .nim file." << endl
+            << endl
+            << "Options:" << endl
+            << "    --pal <filename.nip/.pal>   - Define palette to use in conversion." << endl;
+        return 1;
+    }
+
+    auto palStr = cmdLine.longFlag("pal");
+    u8 transparentIndex = 0xe3;
+
+    if (!palStr.empty())
+    {
+        ifstream f(palStr, ios::binary);
+        if (f.is_open())
+        {
+            Palette p(f);
+            return process_image(p, cmdLine);
+        }
+        else
+        {
+            cerr << "ERROR: Cannot file '" << palStr << "'." << endl;
+            return 1;
+        }
+    }
+    else
+    {
+        Palette p;
+        return process_image(p, cmdLine);
+    }
+
+
     return 0;
 }
 
