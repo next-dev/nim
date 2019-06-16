@@ -43,9 +43,9 @@
 //  0       4       "NIM0" - tag identifying file format and version
 //  4       2       Width (little endian)
 //  6       2       Height (little endian)
-//  8       1       Flags (bit 0: 0=no transparency, 1=transparency)
-//  9       1       Transparency index (or 0 if none)
-//  10      N       Pixel data (0-255)
+//  8       N       Pixel data (0-255)
+//
+// N = 1 byte * Width * Height
 //
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -414,7 +414,7 @@ func process_image(const Palette& p, const CmdLine& cmdLine) -> int
                 {
                     if (i == p.getTransColour()) continue;
 
-                    float p1[3] = { float(p[i].m_red), float(p[i].m_green), float(p[i].m_blue) };
+                    float p1[3] = { float(kColour_3bit[p[i].m_red]), float(kColour_3bit[p[i].m_green]), float(kColour_3bit[p[i].m_blue]) };
 
                     float dx = p1[0] - p0[0];
                     float dy = p1[1] - p0[1];
@@ -435,6 +435,35 @@ func process_image(const Palette& p, const CmdLine& cmdLine) -> int
     }
 
     assert(dst.size() == w * h);
+
+    fs::path outPath = cmdLine.param(0);
+    outPath.replace_extension(".nim");
+    ofstream f(outPath, ios::binary | ios::trunc);
+    if (f)
+    {
+        struct Header
+        {
+            char id[4];
+            u16 width;
+            u16 height;
+        };
+
+        Header hdr;
+        hdr.id[0] = 'N';
+        hdr.id[1] = 'I';
+        hdr.id[2] = 'M';
+        hdr.id[3] = '0';
+        hdr.width = w;
+        hdr.height = h;
+        f.write((char *)&hdr, sizeof(Header));
+        f.write((char *)dst.data(), dst.size());
+        f.close();
+    }
+    else
+    {
+        cerr << "ERROR: Unable to open " << outPath << endl;
+        return 1;
+    }
 
     return 0;
 }
