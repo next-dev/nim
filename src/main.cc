@@ -523,7 +523,19 @@ func main(int argc, char** argv) -> int
 
     if (cmdLine.dispatch() == -1)
     {
-        cerr << "ERROR: Unknown command." << endl;
+        cerr << "ERROR: Unknown command." << endl << endl;
+
+        cout << "Syntax: nim <command> <command-params>" << endl
+            << "Commands:" << endl
+            << "    palette <flags> <filename.pal>     Generate a .nip file" << endl
+            << "    palette <flags> -d <filename.nip>  Generate a default RRRGGGBB palette" << endl
+            << "    image <flags> <filename.ext>       Generate a .nim file from source image" << endl << endl
+            << "palette flags:" << endl
+            << "    -9                                 Use 9-bit palettes (RRRGGGBBB)" << endl
+            << "    --transparent <colour>             Set transparency colour (index only)" << endl
+            << "image flags:" << endl
+            << "    --pal <filename.nip/pal>           Define the palette to use in conversion" << endl
+            << endl;
     }
 }
 
