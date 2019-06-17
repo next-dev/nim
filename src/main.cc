@@ -153,7 +153,7 @@ public:
 
         u32 tag;
         f.read((char *)&tag, 4);
-        if (tag == '\0pin')
+        if (tag == '0PIN')
         {
             // .NIP file
             u8 numColours;
@@ -180,7 +180,7 @@ public:
                 u8 g = ((p1 & 0x1c) >> 2);
                 u8 b = ((p1 & 0x03) << 1) | (p2 & 1);
 
-                m_colours.push_back(Colour(r, g, b));
+                colours.push_back(Colour(r, g, b));
             }
 
             f.read((char *)&m_transparentColour, 1);
@@ -386,6 +386,11 @@ func process_image(const Palette& p, const CmdLine& cmdLine) -> int
     fs::path path = cmdLine.param(0);
 
     u32* img = (u32 *)stbi_load(path.string().c_str(), &w, &h, &bpp, 4);
+    if (!img)
+    {
+        cerr << "ERROR: Could not load image " << path << endl;
+        return 1;
+    }
     vector<u8> dst;
 
     // Convert image
