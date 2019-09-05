@@ -45,7 +45,7 @@
 //  6       2       Height (little endian)
 //  8       N       Pixel data (0-255)
 //
-// N = 1 byte * Width * Height
+// N = 1 byte * Width * Height or 0.5 byte * width * height
 //
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -392,11 +392,31 @@ func process_image(const Palette& p, const CmdLine& cmdLine) -> int
         return 1;
     }
     vector<u8> dst;
+    bool bit4 = false;
+
+    if (cmdLine.flag('4'))
+    {
+        if (p.numColours() > 16)
+        {
+            cerr << "ERROR: Invalid palette for 4-bit mode.  Must be 16 colours or less." << endl;
+            return 1;
+        }
+
+        if (w % 2 == 1)
+        {
+            cerr << "ERROR: Width must be a multiple of 2 for 4-bit mode." << endl;
+            return 1;
+        }
+
+        bit4 = true;
+    }
 
     // Convert image
     u32* s = img;
     for (int row = 0; row < h; ++row)
     {
+        u8 idx = 0;
+
         for (int col = 0; col < w; ++col)
         {
             u8 a = (*s & 0xff000000) >> 24;
@@ -434,12 +454,29 @@ func process_image(const Palette& p, const CmdLine& cmdLine) -> int
                 }
             }
 
-            dst.push_back(x);
+            if (bit4)
+            {
+                if (col % 2 == 0)
+                {
+                    // First nibble
+                    idx = (x << 4);
+                }
+                else
+                {
+                    idx = idx + x;
+                    dst.push_back(idx);
+                }
+            }
+            else
+            {
+                dst.push_back(x);
+            }
+
             ++s;
         }
     }
 
-    assert(dst.size() == w * h);
+    assert((!bit4 && (dst.size() == w * h)) || (bit4 && (dst.size() == (w * h / 2))));
 
     fs::path outPath = cmdLine.param(0);
     outPath.replace_extension(".nim");
@@ -572,6 +609,7 @@ func main(int argc, char** argv) -> int
             << "    --transparent <colour>             Set transparency colour (index only)" << endl
             << "image flags:" << endl
             << "    --pal <filename.nip/pal>           Define the palette to use in conversion" << endl
+            << "    -4                                 Output 4-bit graphics" << endl
             << endl;
     }
 }
