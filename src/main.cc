@@ -516,6 +516,36 @@ func image_handler(const CmdLine& cmdLine) -> int
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// Format help
+//----------------------------------------------------------------------------------------------------------------------
+
+func format_handler(const CmdLine& cmdLine) -> int
+{
+    cout
+        << "NIM" << endl
+        << "---" << endl
+        << "    Offset  Length  Description" << endl
+        << "    ------  ------  -----------" << endl
+        << "    0       4       \"NIM0\" tag identifying file format and version." << endl
+        << "    4       2       Width (little endian)." << endl
+        << "    6       2       Height (little endian)." << endl
+        << "    8       -       Pixel data (width*height bytes)." << endl
+        << endl
+        << "NIP" << endl
+        << "---" << endl
+        << "    Offset  Length  Description" << endl
+        << "    ------  ------  -----------" << endl
+        << "    0       4       \"NIP0\" tag identifying file format and version." << endl
+        << "    4       1       Number of colours (0 == 256 colours)." << endl
+        << "    5       1       Flags (bit 0: 0=8-bit, 1=9-bit)." << endl
+        << "    6       N       Palette data (1 or 2 * number of colours)." << endl
+        << "    6+N     1       Transparency colour." << endl
+        << endl;
+
+    return 0;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
 // Main entry point
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -525,6 +555,7 @@ func main(int argc, char** argv) -> int
 
     cmdLine.addCommand("palette", palette_handler);
     cmdLine.addCommand("image", image_handler);
+    cmdLine.addCommand("format", format_handler);
 
     if (cmdLine.dispatch() == -1)
     {
@@ -534,7 +565,8 @@ func main(int argc, char** argv) -> int
             << "Commands:" << endl
             << "    palette <flags> <filename.pal>     Generate a .nip file" << endl
             << "    palette <flags> -d <filename.nip>  Generate a default RRRGGGBB palette" << endl
-            << "    image <flags> <filename.ext>       Generate a .nim file from source image" << endl << endl
+            << "    image <flags> <filename.ext>       Generate a .nim file from source image" << endl
+            << "    format                             Show formats" << endl << endl
             << "palette flags:" << endl
             << "    -9                                 Use 9-bit palettes (RRRGGGBBB)" << endl
             << "    --transparent <colour>             Set transparency colour (index only)" << endl
